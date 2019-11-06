@@ -2,9 +2,35 @@ import {GraphQLServer} from 'graphql-yoga';
 import * as uuid from 'uuid';
 
 // Variables globales que actuarán como base de datos (no persistente)
+const authorsData = [{
+    id: "3644209f-f726-426a-94b2-2b334e12f450",
+    name: "José Luis",
+    email: "joseluis@delahoz.org",
+    recipes: [],
+}];
+const ingredientsData = [
+    {
+	id: "b68d4e94-3f74-4df7-97d6-275bf354f81b",
+	name: "Tomate",
+	recipes: [],
+    },
+    {
+	id: "0e2f3361-826c-4c8b-a335-b45d27e91de9",
+	name: "Queso",
+	recipes: [],
+    },
+    {
+	id: "14083051-9b2f-4009-953d-a3a4b6e7ef41",
+	name: "Masa",
+	recipes: [],
+    },
+    {
+	id: "bfd1c46c-19be-4169-8308-5e0572c1c412",
+	name: "Pepperoni",
+	recipes: [],
+    },
+];
 const recipesData = [];
-const authorsData = [];
-const ingredientsData = [];
 
 // Definición de tipos en GraphQL
 const typeDefs = `
@@ -49,14 +75,15 @@ const typeDefs = `
         updateAuthor(id: ID!, name: String, email: String, recipes: [ID]): Author!
         updateIngredient(id: ID!, name: String, recipes: [ID]): Ingredient!
     }
-`
+`;
 
 const resolvers = {
 
     Recipe: {
         author: (parent, args, ctx, info) => {
             const authorID = parent.author;
-            return authorsData.find(author => author.id === authorID);
+            const author =  authorsData.find(author => author.id === authorID);
+	    return author;
         },
         ingredients: (parent, args, ctx, info) => {
             const ingredientsID = parent.ingredients;
@@ -66,8 +93,52 @@ const resolvers = {
         }
     },
 
+    Author: {
+	recipes: (parent, args, ctx, info) => {
+	    const recipesID = parent.recipes;
+	    return recipesID.map(id => {
+		return recipesData.find(element => element.id === id);
+	    });
+	},
+    },
+    
+    // Para que funcionen los show list tengo que implementar la sobreescritura de Author
+    // e Ingredients, al igual que el objeto de arriba.
+    Ingredient: {
+	recipes: (parent , args, ctx, info) => {
+	    const recipesID = parent.recipes;
+	    return recipesID.map(id => {
+		return recipesData.find(element => element.id === id);
+	    });
+	},
+    },
+
     Query: {
-        
+	recipes: (parent, args, ctx, info) => {
+	    return recipesData.map(recipe => {return recipe});
+	},
+        authors: (parent, args, ctx, info) => {
+	    return authorsData.map(author => {return author});
+	},
+	ingredients: (parent, args, ctx, info) => {
+	    return ingredientsData.map(ingredient => {return ingredient});
+	},
+	recipesFromAuthor: (parent, args, ctx, info) => {
+	    const authorID = args.id;
+	    const author = authorsData.find(author => author.id === authorID);
+	    return author.recipes.map(recipeID => {
+		const recipe = recipesData.find(recipe => recipe.id === recipeID);
+		return recipe;
+	    });
+	},
+	recipesWithIngredient: (parent, args, ctx, info) => {
+	    const ingredientID = args.id;
+	    const ingredient = ingredientsData.find(ingredient => ingredient.id === ingredientID);
+	    return ingredient.recipes.map(recipeID => {
+		const recipe = recipesData.find(recipe => recipe.id === recipeID);
+		return recipe;
+	    });
+	},
     },
 
     Mutation: {
@@ -85,7 +156,16 @@ const resolvers = {
                 author,
                 ingredients,
             };
+	    //TODO: add recipe id to ingredients that are used for and author
+	    const authorObject = authorsData.find(authors => authors.id === author);
+	    authorObject.recipes.push(id);
+	    console.log(authorObject.recipes);
             recipesData.push(recipe);
+	    ingredients.map(element => {
+		const ing = ingredientsData.find(data => data.id === element);
+		ing.recipes.push(id);
+		console.log(ing.recipes);
+	    });
             return recipe;
         },
         // Add author
@@ -119,9 +199,12 @@ const resolvers = {
             ingredientsData.push(ingredient);
             return ingredient;
         },
+	deleteRecipe: (parent, args, ctx, info) => {
+
+	}
     },
 
-}
+};
 
 const server = new GraphQLServer({typeDefs, resolvers});
 server.start((console.log('Server listening!')));
