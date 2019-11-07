@@ -72,8 +72,8 @@ const typeDefs = `
         deleteAuthor(id: ID!): Author
         deleteIngredient(id: ID!): Ingredient
         updateRecipe(id: ID!, title: String, description: String, author: ID, ingredients: [ID]): Recipe
-        updateAuthor(id: ID!, name: String, email: String, recipes: [ID]): Author
-        updateIngredient(id: ID!, name: String, recipes: [ID]): Ingredient
+        updateAuthor(id: ID!, name: String, email: String): Author
+        updateIngredient(id: ID!, name: String!): Ingredient
     }
 `;
 
@@ -249,8 +249,6 @@ const resolvers = {
 				console.log(ingredientsObjects);
 				recipe.ingredients = args.recipes;
 			}
-
-
 			return recipe;
 			/*
 			const recipe = recipesData.find(recipe => recipe.id === args.id);
@@ -295,6 +293,17 @@ const resolvers = {
 			return recipe;
 			*/
 		},
+		updateAuthor: (parent, args, ctx, info) => {
+			const author = authorsData.find(author => author.id === args.id);
+			author.name = args.name || author.name;
+			author.description = args.description || author.description;
+			return author;
+		},
+		updateIngredient: (parent, args, ctx, info) => {
+			const ingredient = ingredientsData.find(ingredient => ingredient.id === args.id);
+			ingredient.name = args.name || ingredient.name;
+			return ingredient;
+		}
 	},
 
 };
