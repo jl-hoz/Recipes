@@ -1,5 +1,6 @@
 import { GraphQLServer } from 'graphql-yoga';
 import * as uuid from 'uuid';
+import {rmRecipe} from './utils';
 
 // Variables globales que actuarán como base de datos (no persistente)
 const authorsData = [{
@@ -70,7 +71,7 @@ const typeDefs = `
         addIngredient(name: String!): Ingredient
         deleteRecipe(id: ID!): Recipe
         deleteAuthor(id: ID!): Author
-        deleteIngredient(id: ID!): Ingredient
+        deleteIngredient(id: ID!): String
         updateRecipe(id: ID!, title: String, description: String, author: ID, ingredients: [ID]): Recipe
         updateAuthor(id: ID!, name: String, email: String): Author
         updateIngredient(id: ID!, name: String!): Ingredient
@@ -103,8 +104,6 @@ const resolvers = {
 
 	},
 
-	// Para que funcionen los show list tengo que implementar la sobreescritura de Author
-	// e Ingredients, al igual que el objeto de arriba.
 	Ingredient: {
 		recipes: (parent, args, ctx, info) => {
 			const recipesID = parent.recipes;
@@ -201,27 +200,33 @@ const resolvers = {
 			return ingredient;
 		},
 		deleteRecipe: (parent, args, ctx, info) => {
-			let flag = false;
 			const recipe = recipesData.find(recipe => recipe.id === args.id);
-			if (recipe) {
-				flag = true;
-				const authorID = recipe.author;
-				const ingredients = recipe.ingredients;
-				//Delete reference of recipe in author
-				const author = authorsData.find(author => author.id === authorID);
-				author.recipes.splice(author.recipes.indexOf(args.id), 1);
-				//Delete each reference of recipe in ingredients array
-				ingredients.map(ingredientID => {
-					const ingredient = ingredientsData.find(ingredient => ingredient.id === ingredientID);
-					ingredient.recipes.splice(ingredient.recipes.indexOf(args.id), 1);
-				});
-				//Delete Recipe
-				recipesData.splice(recipesData.indexOf(recipe), 1);
-			}
-			return flag;
+			rmRecipe(recipe.id);
+			return recipe;
 		},
-		//TODO: deleteAuthor
+		//deleteAuthor
+		deleteAuthor: (parent, args, ctx, info) => {
+			const author = authorsData.find(author => author.id === args.id);
+			if(author){
+				author.recipes.forEach(recipeID => {
+					rmRecipe(recipeID);
+				});
+				authorsData.splice(authorsData.indexOf(author), 1);
+			}
+			return author;
+		},
 		//TODO: deleteIngredient
+		deleteIngredient: (parent, args, ctx, info) => {
+			const ingredient = ingredientsData.find(ingredient => ingredient.id === args.id);
+			if(ingredient){
+				ingredient.recipes.forEach(recipeID => {
+					const recipe = recipesData.find(recipe => recipe.id === recipeID);
+					recipe.ingredients.splice(recipe.ingredients.indexOf(ingredient.id), 1);
+				});
+				ingredientsData.splice(ingredientsData.indexOf(ingredient), 1);
+			}
+			return 'por favor';
+		},
 		updateRecipe: (parent, args, ctx, info) => {
 			const recipe = recipesData.find(recipe => recipe.id === args.id);
 			const author = authorsData.find(author => author.id === args.author);
@@ -312,3 +317,4 @@ const server = new GraphQLServer({ typeDefs, resolvers });
 server.start((console.log('Server listening!')));
 
 
+export {authorsData, recipesData, ingredientsData};
