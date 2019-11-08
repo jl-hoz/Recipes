@@ -3,34 +3,8 @@ import * as uuid from 'uuid';
 import {rmRecipe} from './utils';
 
 // Variables globales que actuarán como base de datos (no persistente)
-const authorsData = [{
-	id: "3644209f-f726-426a-94b2-2b334e12f450",
-	name: "José Luis",
-	email: "joseluis@delahoz.org",
-	recipes: [],
-}];
-const ingredientsData = [
-	{
-		id: "b68d4e94-3f74-4df7-97d6-275bf354f81b",
-		name: "Tomate",
-		recipes: [],
-	},
-	{
-		id: "0e2f3361-826c-4c8b-a335-b45d27e91de9",
-		name: "Queso",
-		recipes: [],
-	},
-	{
-		id: "14083051-9b2f-4009-953d-a3a4b6e7ef41",
-		name: "Masa",
-		recipes: [],
-	},
-	{
-		id: "bfd1c46c-19be-4169-8308-5e0572c1c412",
-		name: "Pepperoni",
-		recipes: [],
-	},
-];
+const authorsData = [];
+const ingredientsData = [];
 const recipesData = [];
 
 // Definición de tipos en GraphQL
@@ -225,7 +199,7 @@ const resolvers = {
 				});
 				ingredientsData.splice(ingredientsData.indexOf(ingredient), 1);
 			}
-			return 'por favor';
+			return 'Ingredient succesfully delete';
 		},
 		updateRecipe: (parent, args, ctx, info) => {
 			const recipe = recipesData.find(recipe => recipe.id === args.id);
