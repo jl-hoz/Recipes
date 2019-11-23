@@ -20,8 +20,10 @@
     "nodemon": "^1.19.4"
   },
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
     "dependencies": "0.0.1",
     "graphql-yoga": "^1.18.3",
+    "mongodb": "^3.3.4",
     "uuid": "^3.3.3"
   }
 }
