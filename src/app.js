@@ -249,21 +249,23 @@ const runGraphQLServer = function (context) {
 				const collection = db.collection("authors");
 				const author = await collection.findOne({ _id: ObjectID(args.id) });
 				if (author) {
-					await collection.deleteOne({ _id: ObjectID(args.id) });	// delete by id obtain reference
+					const recipesCollection = db.collection('recipes');
+					await recipesCollection.deleteMany({author: ObjectID(args.id)});
+					await collection.deleteOne({ _id: ObjectID(args.id) });
 				}
 				return author;
 			},
-			//TODO:
 			deleteIngredient: async (parent, args, ctx, info) => {
 				const { client } = ctx;
-				// Connect to DB and obtain table
 				const db = client.db("RecipesDatabase");
-				const collection = db.collection("ingredients");
-				const ingredients = await collection.findOne({ _id: ObjectID(args.id) });
-				if (ingredients) {
-					await collection.deleteOne({ _id: ObjectID(args.id) });	// delete by id obtain reference
+				const ingredientsCollection = db.collection("ingredients");
+				const ingredient = await ingredientsCollection.findOne({ _id: ObjectID(args.id) });
+				if (ingredient) {
+					const recipesCollection = db.collection('recipes');
+					await recipesCollection.deleteMany({ingredients: ObjectID(args.id)});
+					await ingredientsCollection.deleteOne({ _id: ObjectID(args.id) });
 				}
-				return ingredients;
+				return ingredient;
 			},
 			updateRecipe: (parent, args, ctx, info) => {
 				const { client } = ctx;
