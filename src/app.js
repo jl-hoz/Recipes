@@ -1,5 +1,4 @@
 import { GraphQLServer } from 'graphql-yoga';
-import * as uuid from 'uuid';
 import { rmRecipe } from './utils';
 import { MongoClient, ObjectID } from "mongodb";
 import "babel-polyfill";
@@ -24,11 +23,6 @@ const connectToDb = async function (usr, pwd, url) {
 	await client.connect();
 	return client;
 };
-
-// Variables globales que actuarán como base de datos (no persistente)
-const authorsData = [];
-const ingredientsData = [];
-const recipesData = [];
 
 const runGraphQLServer = function (context) {
 
@@ -71,7 +65,7 @@ const runGraphQLServer = function (context) {
 			deleteRecipe(id: ID!): Recipe
 			deleteAuthor(id: ID!): Author
 			deleteIngredient(id: ID!): Ingredient
-			updateRecipe(id: ID!, title: String, description: String, author: ID, ingredients: [ID]): Recipe
+			updateRecipe(id: ID!, title: String, description: String): Recipe
 			updateAuthor(id: ID!, name: String, email: String): Author
 			updateIngredient(id: ID!, name: String!): Ingredient
 		}
@@ -85,14 +79,14 @@ const runGraphQLServer = function (context) {
 				const db = client.db("RecipesDatabase");
 				const collection = db.collection('authors');
 				const authorID = parent.author;
-				return await collection.findOne({_id: ObjectID(authorID)});;
+				return await collection.findOne({ _id: ObjectID(authorID) });;
 			},
-			ingredients: async(parent, args, ctx, info) => {
+			ingredients: async (parent, args, ctx, info) => {
 				const { client } = ctx;
 				const db = client.db("RecipesDatabase");
 				const collection = db.collection('ingredients');
 				const ingredients = parent.ingredients.map(async (ingredientID) => {
-					return await collection.findOne({_id: ObjectID(ingredientID)});
+					return await collection.findOne({ _id: ObjectID(ingredientID) });
 				});
 				console.log(ingredients);
 				return ingredients;
@@ -111,12 +105,12 @@ const runGraphQLServer = function (context) {
 		},
 
 		Ingredient: {
-			recipes: async(parent, args, ctx, info) => {
+			recipes: async (parent, args, ctx, info) => {
 				const { client } = ctx;
 				const db = client.db("RecipesDatabase");
 				const collection = db.collection('recipes');
 				const ingredientID = parent._id;
-				return await collection.find({ ingredients: {$elemMatch:{$eq:ObjectID(ingredientID)}} }).toArray();
+				return await collection.find({ ingredients: { $elemMatch: { $eq: ObjectID(ingredientID) } } }).toArray();
 			},
 		},
 
@@ -150,14 +144,14 @@ const runGraphQLServer = function (context) {
 				const db = client.db("RecipesDatabase");
 				const collection = db.collection('recipes');
 				const authorID = args.id;
-				return await collection.find({author: ObjectID(authorID)}).toArray();
+				return await collection.find({ author: ObjectID(authorID) }).toArray();
 			},
 			recipesWithIngredient: async (parent, args, ctx, info) => {
 				const { client } = ctx;
 				const db = client.db("RecipesDatabase");
 				const collection = db.collection('recipes');
 				const ingredientID = args.id;
-				return await collection.find({ ingredients: {$elemMatch:{$eq:ObjectID(ingredientID)}} }).toArray();
+				return await collection.find({ ingredients: { $elemMatch: { $eq: ObjectID(ingredientID) } } }).toArray();
 			},
 		},
 
@@ -234,6 +228,7 @@ const runGraphQLServer = function (context) {
 					recipes: [],
 				};
 			},
+			//TODO:
 			deleteRecipe: async (parent, args, ctx, info) => {
 				const { client } = ctx;
 				// Connect to DB and obtain table
@@ -246,7 +241,7 @@ const runGraphQLServer = function (context) {
 				}
 				return recipe;
 			},
-			//deleteAuthor
+			//TODO:
 			deleteAuthor: async (parent, args, ctx, info) => {
 				const { client } = ctx;
 				// Connect to DB and obtain table
@@ -258,7 +253,7 @@ const runGraphQLServer = function (context) {
 				}
 				return author;
 			},
-			//deleteIngredient
+			//TODO:
 			deleteIngredient: async (parent, args, ctx, info) => {
 				const { client } = ctx;
 				// Connect to DB and obtain table
@@ -271,47 +266,61 @@ const runGraphQLServer = function (context) {
 				return ingredients;
 			},
 			updateRecipe: (parent, args, ctx, info) => {
-				const recipe = recipesData.find(recipe => recipe.id === args.id);
-				const author = authorsData.find(author => author.id === args.author);
-				recipe.title = args.title || recipe.title;
-				recipe.description = args.description || recipe.description;
-				if (author) {
-					//Delete refence of recipe in older author
-					const oldAuthor = authorsData.find(author => author.id === recipe.author);
-					oldAuthor.recipes.splice(oldAuthor.recipes.indexOf(recipe.id), 1);
-					//Push reference of recipe in new author
-					author.recipes.push(args.id);
-					recipe.author = author.id;
+				const { client } = ctx;
+				const db = client.db("RecipesDatabase");
+				const collection = db.collection("recipes");
+				const date = new Date().getDate;
+				if (collection.findOne({ _id: ObjectID(args.id) })) {
+					if (args.title) {
+						collection.updateOne({ _id: ObjectID(args.id) }, { $set: { title: args.title } });
+					}
+					if (args.description) collection.updateOne({ _id: ObjectID(args.id) }, { $set: { description: args.description } });
+				} else {
+					throw new Error(`${args.id} doesn't exists`);
 				}
-				if (args.ingredients) {
-					const oldIngredientsObjects = recipe.ingredients.map(ingredientID => {
-						return ingredientsData.find(ingredient => ingredient.id === ingredientID);
-					});
-					// Delete reference of recipe in each older ingredient
-					oldIngredientsObjects.forEach(ingredient => ingredient.recipes.splice(ingredient.recipes.indexOf(recipe.id), 1));
-					console.log(oldIngredientsObjects);
-					const ingredientsObjects = args.ingredients.map(ingredientID => {
-						return ingredientsData.find(ingredient => ingredient.id === ingredientID);
-					});
-					ingredientsObjects.forEach(ingredient => ingredient.recipes.push(args.id));
-					console.log(ingredientsObjects);
-					recipe.ingredients = args.recipes;
-				}
-				return recipe;
+				return {
+					_id: args.id,
+					title: args.title,
+					description: args.description,
+					date,
+				};
 			},
-			/**
-			 * GraphQL Mutation that updates an Author 
-			 */
 			updateAuthor: (parent, args, ctx, info) => {
-				const author = authorsData.find(author => author.id === args.id);
-				author.name = args.name || author.name;
-				author.description = args.description || author.description;
-				return author;
+				const { client } = ctx;
+				const db = client.db("RecipesDatabase");
+				const collection = db.collection("authors");
+				const email = args.email;
+				const name = args.name;
+				if (collection.findOne({ _id: args.id })) {
+					if (email) {
+						collection.updateOne({ _id: ObjectID(args.id) }, { $set: { email } });
+					}
+					if (name) {
+						collection.updateOne({ _id: ObjectID(args.id) }, { $set: { name } });
+					}
+				} else {
+					throw new Error(`${args.id} doesn't exists`)
+				}
+
+				return {
+					_id: args.id,
+					email,
+					name,
+				};
 			},
 			updateIngredient: (parent, args, ctx, info) => {
-				const ingredient = ingredientsData.find(ingredient => ingredient.id === args.id);
-				ingredient.name = args.name || ingredient.name;
-				return ingredient;
+				const { client } = ctx;
+				const db = client.db("RecipesDatabase");
+				const collection = db.collection("ingredients");
+				if (collection.findOne({ _id: args.id })) {
+					collection.updateOne({ _id: ObjectID(args.id) }, { $set: { name: args.name } });
+				} else {
+					throw new Error(`${args.id} doesn't exists`);
+				}
+				return {
+					_id: args.id,
+					name: args.name,
+				};
 			}
 		},
 
@@ -341,5 +350,3 @@ const runApp = async function () {
 };
 
 runApp();
-
-export { authorsData, recipesData, ingredientsData };
